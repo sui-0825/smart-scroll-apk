@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "versionCode": 0,
-  "versionName": "0.0.0",
-  "apkUrl": "",
-  "notes": "配布版の検証が完了するまで更新通知は配信しません。"
+  "versionCode": 31,
+  "versionName": "0.4.6",
+  "apkUrl": "https://github.com/sui-0825/smart-scroll-apk/releases/download/v0.4.6/SmartScroll-v0.4.6.apk",
+  "notes": "更新通知と手動更新の動作を確認するテスト版です。インストールは端末ごとに選択してください。"
 }
