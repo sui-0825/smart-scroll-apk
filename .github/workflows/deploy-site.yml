@@ -1,0 +1,87 @@
+name: Deploy Smart Scroll APK download site
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/deploy-site.yml
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: smart-scroll-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout download page
+        uses: actions/checkout@v4
+
+      - name: Select and verify the approved release APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p site
+          python3 - <<'PY'
+          import json, re, pathlib
+          data = json.loads(pathlib.Path('latest.json').read_text())
+          v = data['versionName']
+          expected = f'https://github.com/sui-0825/smart-scroll-apk/releases/download/v{v}/SmartScroll-v{v}.apk'
+          assert re.fullmatch(r'\d+\.\d+\.\d+', v), 'bad version'
+          assert data['schema'] == 1 and data['versionCode'] > 0 and data['apkUrl'] == expected, 'manifest must point to approved release'
+          pathlib.Path('/tmp/smartscroll-tag.txt').write_text('v' + v)
+          pathlib.Path('/tmp/smartscroll-asset.txt').write_text(f'SmartScroll-v{v}.apk')
+          PY
+          TAG="$(cat /tmp/smartscroll-tag.txt)"
+          ASSET="$(cat /tmp/smartscroll-asset.txt)"
+          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" > "$RUNNER_TEMP/release.json"
+          python3 - <<'PY'
+          import json, os, pathlib
+          release=json.load(open(os.environ['RUNNER_TEMP']+'/release.json'))
+          assert not release['draft'], 'release not published'
+          name=pathlib.Path('/tmp/smartscroll-asset.txt').read_text()
+          matching=[a for a in release['assets'] if a['name']==name and a['state']=='uploaded']
+          assert len(matching)==1 and matching[0]['size']>100000 and matching[0]['size']<50000000, 'missing or invalid APK'
+          digest=matching[0].get('digest','')
+          assert digest.startswith('sha256:') and len(digest)==71, 'missing SHA-256 hash'
+          pathlib.Path('/tmp/smartscroll-hash.txt').write_text(digest[7:])
+          PY
+          gh release download "$TAG" -R "$GITHUB_REPOSITORY" --pattern "$ASSET" --dir "$RUNNER_TEMP" --clobber
+          printf '%s  %s\n' "$(cat /tmp/smartscroll-hash.txt)" "$RUNNER_TEMP/$ASSET" | sha256sum --check -
+          cp "$RUNNER_TEMP/$ASSET" site/SmartScroll.apk
+          cp latest.json site/latest.json
+          cp SmartScroll-common-QR.png site/SmartScroll-common-QR.png
+          python3 - <<'PY'
+          import pathlib
+          html=pathlib.Path('index.html').read_text()
+          old='link.href = data.apkUrl;'
+          assert old in html, 'download link expression not found'
+          html=html.replace(old,'link.href = "./SmartScroll.apk";')
+          html=html.replace('GitHubのダウンロード確認や', 'Androidのダウンロード確認や')
+          pathlib.Path('site/index.html').write_text(html)
+          pathlib.Path('site/.nojekyll').write_text('')
+          PY
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload verified download website
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
