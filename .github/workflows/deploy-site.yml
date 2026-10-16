@@ -9,6 +9,8 @@ on:
       - latest.json
       - index.html
       - SmartScroll-common-QR.png
+      - SmartScroll-永久共通QRカード.svg
+      - qr.html
   release:
     types: [published]
 
@@ -66,6 +68,8 @@ jobs:
           cp "$RUNNER_TEMP/$ASSET" site/SmartScroll.apk
           cp latest.json site/latest.json
           cp SmartScroll-common-QR.png site/SmartScroll-common-QR.png
+          cp 'SmartScroll-永久共通QRカード.svg' 'site/SmartScroll-永久共通QRカード.svg'
+          cp qr.html site/qr.html
           python3 - <<'PY'
           import pathlib
           html=pathlib.Path('index.html').read_text()
