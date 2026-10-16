@@ -6,6 +6,9 @@ on:
     branches: [main]
     paths:
       - .github/workflows/deploy-site.yml
+      - latest.json
+      - index.html
+      - SmartScroll-common-QR.png
   release:
     types: [published]
 
