@@ -30,8 +30,8 @@
   <h2>Android用・最新版APK</h2>
   <div class="pill" id="version">最新版を確認中</div>
   <p class="status" id="status" role="status" aria-live="polite">最新のインストールファイルを探しています…</p>
-  <a class="download" id="download" hidden href="#">APKをダウンロード</a>
-  <p class="note">Androidのダウンロード確認やインストールの許可画面が表示される場合があります。<br>このページが自動的に移動しない場合は、上のボタンを押してください。</p>
+  <a class="download" id="download" hidden href="#">⬇ 最新版APKをダウンロード</a>
+  <p class="note">Androidのダウンロード確認やインストールの許可画面が表示される場合があります。<br>ダウンロードは上のボタンを押すと始まります。ボタンを押しても保存が進まない場合は下のリリース一覧からAPKを選んでください。</p>
   <p class="small"><a href="https://github.com/sui-0825/smart-scroll-apk/releases">手動でリリース一覧を開く</a></p>
 </main>
 <script>
@@ -52,9 +52,8 @@
     version.textContent = "最新版 Ver." + data.versionName;
     link.href = data.apkUrl;
     link.hidden = false;
-    status.textContent = "最新版APKのダウンロードページに移動します…";
-    // Remain clickable when browser security settings prevent an automatic navigation.
-    window.location.assign(data.apkUrl);
+    status.textContent = "最新版が見つかりました。下のボタンを押してAPKをダウンロードしてください。";
+    // Only navigate after a user tap: browser download handling can hang on automatic redirects.
   } catch (error) {
     version.textContent = "配布情報を確認できません";
     status.textContent = "少し待ってから読み直すか、リリース一覧からダウンロードしてください。";
