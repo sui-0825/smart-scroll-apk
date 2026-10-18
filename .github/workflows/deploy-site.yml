@@ -16,7 +16,7 @@ on:
     types: [published]
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -33,6 +33,25 @@ jobs:
     steps:
       - name: Checkout download page
         uses: actions/checkout@v4
+
+      # Reassemble the exact tested, signed APK from Git blobs committed
+      # to this public distribution repository. Never need to expose
+      # the private source repository or its signing keystore.
+      - name: Publish verified v0.4.27 signed APK release
+        if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          APK="$RUNNER_TEMP/SmartScroll-v0.4.27.apk"
+          cat dist/release-parts/v0.4.27/*.part > "$APK"
+          echo "8521188c39f3346ab704d8f58df9e29315a48df2af1c5e3496b6cc8fd24e174e  $APK" | sha256sum --check -
+          test "$(stat -c%s "$APK")" -eq 5445009
+          if ! gh release view v0.4.27 -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create v0.4.27 "$APK" -R "$GITHUB_REPOSITORY" \
+              --target main --title "Smart Scroll v0.4.27" --prerelease \
+              --notes "安定性を重視したSmart Scroll v0.4.27。スワイプ位置と速度のランダム化、ふわキラ流れ星、サイズのランダム演出、画面表示の整理に対応。初めに1台で試してください。"
+          fi
 
       - name: Select and verify the approved release APK
         env:

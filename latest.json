@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "versionCode": 31,
-  "versionName": "0.4.6",
-  "apkUrl": "https://github.com/sui-0825/smart-scroll-apk/releases/download/v0.4.6/SmartScroll-v0.4.6.apk",
-  "notes": "更新通知と手動更新の動作を確認するテスト版です。インストールは端末ごとに選択してください。"
+  "versionCode": 52,
+  "versionName": "0.4.27",
+  "apkUrl": "https://github.com/sui-0825/smart-scroll-apk/releases/download/v0.4.27/SmartScroll-v0.4.27.apk",
+  "notes": "v0.4.27：ふわキラ流れ星のサイズ変化・スワイプ位置と速度のランダム化・設定表示改善。まず1台で動作確認してください。"
 }
