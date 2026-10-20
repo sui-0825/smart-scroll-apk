@@ -1,0 +1,39 @@
+name: Publish verified Smart Scroll v0.4.30
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-v0430.yml'
+      - 'publish/v0.4.30/**'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout verified APK pieces
+        uses: actions/checkout@v4
+      - name: Restore and verify signed APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat publish/v0.4.30/chunk??.bin > SmartScroll-v0.4.30.apk
+          printf '%s\n' 'e1fd99b37b8b0e6c81e34d65759aeb15e1168165c55ec1ed924bc0006b701ed6  SmartScroll-v0.4.30.apk' | sha256sum --check -
+          test "$(stat -c%s SmartScroll-v0.4.30.apk)" = 5469693
+      - name: Publish APK as GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view v0.4.30 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload v0.4.30 SmartScroll-v0.4.30.apk --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create v0.4.30 SmartScroll-v0.4.30.apk \
+              --repo "$GITHUB_REPOSITORY" \
+              --target main \
+              --title "Smart Scroll v0.4.30" \
+              --notes "機種別の初期設定ガイドを拡充（nubia、Motorola、Libero、BASIO、Pixel、arrows、Lenovo）。v0.4.28のバー誤判定修正も含みます。1台で動作を確認してから台数を増やしてください。" \
+              --prerelease
+          fi
