@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "versionCode": 52,
-  "versionName": "0.4.27",
-  "apkUrl": "https://github.com/sui-0825/smart-scroll-apk/releases/download/v0.4.27/SmartScroll-v0.4.27.apk",
-  "notes": "v0.4.27：ふわキラ流れ星のサイズ変化・スワイプ位置と速度のランダム化・設定表示改善。まず1台で動作確認してください。"
+  "versionCode": 55,
+  "versionName": "0.4.30",
+  "apkUrl": "https://github.com/sui-0825/smart-scroll-apk/releases/download/v0.4.30/SmartScroll-v0.4.30.apk",
+  "notes": "v0.4.30：nubia・Motorola・Libero・BASIO・Pixel・arrows・Lenovo対応の初期設定ガイドを追加。バー誤認識の改善も含みます。まず1台で動作確認してください。"
 }
