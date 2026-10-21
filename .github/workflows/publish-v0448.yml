@@ -78,10 +78,10 @@ jobs:
           if assets:
             a=assets[0]
             assert a['size']==53169101 and a.get('digest')=='sha256:17c74be9a9ad49d6a8e64ade2d3a872bb6db39a9724f8445ebed4912244c572d', 'Unexpected existing APK'
-          with open(os.environ['GITHUB_ENV'],'a') as f:
-            f.write('V0448_ASSET_PRESENT='+('true' if assets else 'false')+'\n')
+          with open(os.environ['RUNNER_TEMP']+'/v0448-asset-present.txt','w') as f:
+            f.write('true' if assets else 'false')
           PY
-          if [ "$V0448_ASSET_PRESENT" = 'false' ]; then
+          if [ "$(cat "$RUNNER_TEMP/v0448-asset-present.txt")" = 'false' ]; then
             gh release upload v0.4.48 SmartScroll-v0.4.48.apk -R "$GITHUB_REPOSITORY"
           fi
 
