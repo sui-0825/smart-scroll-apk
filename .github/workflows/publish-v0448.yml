@@ -1,0 +1,140 @@
+name: Publish verified Smart Scroll v0.4.48
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-v0448.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  publish-verified-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout release delta and verified base parts
+        uses: actions/checkout@v4
+
+      - name: Restore exact v0.4.46 and v0.4.48 patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64, hashlib, zlib
+          old=Path('dist/release-parts/v0.4.46')
+          parts=sorted(old.glob('chunk[0-9][0-9][0-9].part'))
+          assert [x.name for x in parts] == [f'chunk{i:03d}.part' for i in range(22)], 'v0.4.46 base parts missing'
+          compressed=b''.join(x.read_bytes() for x in parts)
+          assert len(compressed)==22659038, 'v0.4.46 compressed size mismatch'
+          original=zlib.decompress(compressed)
+          assert len(original)==53152717, 'v0.4.46 APK length mismatch'
+          assert hashlib.sha256(original).hexdigest()=='9dd9238848a3f6e855a8885fa02bf4fcb80821891ea6442887fe4fd1fb9687e8', 'v0.4.46 APK hash mismatch'
+          Path('SmartScroll-v0.4.46.apk').write_bytes(original)
+          folder=Path('dist/release-parts/v0.4.48')
+          files=sorted(folder.glob('patch[0-9][0-9].b64'))
+          assert [x.name for x in files]==[f'patch{i:02d}.b64' for i in range(5)], 'v0.4.48 patch parts missing'
+          patch=b''.join(base64.b64decode(x.read_text().strip(),validate=True) for x in files)
+          assert len(patch)==2406226, 'v0.4.48 patch size mismatch'
+          assert hashlib.sha256(patch).hexdigest()=='b0742a28def21a451ef93ebac84b6fc8e13c4bc84bc55e76577de48304082e3c', 'v0.4.48 patch hash mismatch'
+          Path('patch-v0448.zst').write_bytes(patch)
+          print('Both base APK and patch verified')
+          PY
+
+      - name: Apply verified patch to signed APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v zstd >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y zstd
+          fi
+          zstd --patch-from=SmartScroll-v0.4.46.apk -d patch-v0448.zst -o SmartScroll-v0.4.48.apk
+          test "$(stat -c%s SmartScroll-v0.4.48.apk)" -eq 53169101
+          printf '%s  %s\n' '17c74be9a9ad49d6a8e64ade2d3a872bb6db39a9724f8445ebed4912244c572d' 'SmartScroll-v0.4.48.apk' | sha256sum --check -
+
+      - name: Create draft and upload exact verified v0.4.48 APK
+        shell: bash
+        env:
+          GH_TOKEN: \${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! gh release view v0.4.48 -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create v0.4.48 -R "$GITHUB_REPOSITORY" --target main \
+              --title 'Smart Scroll v0.4.48' --draft --prerelease \
+              --notes 'Smart Scroll v0.4.48。設定画面と視認性の調整。まず1台で上書き更新をお試しください。'
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" > "$RUNNER_TEMP/v0448-before.json"
+          python3 - <<'PY'
+          import os,json
+          data=json.load(open(os.environ['RUNNER_TEMP']+'/v0448-before.json'))
+          matches=[r for r in data if r['tag_name']=='v0.4.48']
+          assert len(matches)==1, 'Expected exactly one v0.4.48 release'
+          assets=[a for a in matches[0]['assets'] if a['name']=='SmartScroll-v0.4.48.apk']
+          assert len(assets)<=1, 'Unexpected duplicate assets'
+          if assets:
+            a=assets[0]
+            assert a['size']==53169101 and a.get('digest')=='sha256:17c74be9a9ad49d6a8e64ade2d3a872bb6db39a9724f8445ebed4912244c572d', 'Unexpected existing APK'
+          with open(os.environ['GITHUB_ENV'],'a') as f:
+            f.write('V0448_ASSET_PRESENT='+('true' if assets else 'false')+'\n')
+          PY
+          if [ "$V0448_ASSET_PRESENT" = 'false' ]; then
+            gh release upload v0.4.48 SmartScroll-v0.4.48.apk -R "$GITHUB_REPOSITORY"
+          fi
+
+      - name: Verify uploaded APK and publish release
+        shell: bash
+        env:
+          GH_TOKEN: \${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" > "$RUNNER_TEMP/v0448-after.json"
+          python3 - <<'PY'
+          import json,os
+          data=json.load(open(os.environ['RUNNER_TEMP']+'/v0448-after.json'))
+          matches=[r for r in data if r['tag_name']=='v0.4.48']
+          assert len(matches)==1
+          assets=[a for a in matches[0]['assets'] if a['name']=='SmartScroll-v0.4.48.apk' and a['state']=='uploaded']
+          assert len(assets)==1 and assets[0]['size']==53169101
+          assert assets[0].get('digest')=='sha256:17c74be9a9ad49d6a8e64ade2d3a872bb6db39a9724f8445ebed4912244c572d'
+          PY
+          gh release download v0.4.48 -R "$GITHUB_REPOSITORY" \
+            --pattern 'SmartScroll-v0.4.48.apk' --dir "$RUNNER_TEMP" --clobber
+          printf '%s  %s\n' '17c74be9a9ad49d6a8e64ade2d3a872bb6db39a9724f8445ebed4912244c572d' \
+            "$RUNNER_TEMP/SmartScroll-v0.4.48.apk" | sha256sum --check -
+          gh release edit v0.4.48 -R "$GITHUB_REPOSITORY" --draft=false --prerelease
+
+      - name: Update shared QR destination only after verified publication
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          info={
+            'schema':1,
+            'versionCode':73,
+            'versionName':'0.4.48',
+            'apkUrl':'https://github.com/sui-0825/smart-scroll-apk/releases/download/v0.4.48/SmartScroll-v0.4.48.apk',
+            'notes':'v0.4.48：デザインと設定画面を調整した更新版。最初は1台で確認してください。'
+          }
+          Path('latest.json').write_text(json.dumps(info,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+          if ! git diff --quiet -- latest.json; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add latest.json
+            git commit -m 'Switch permanent Smart Scroll QR to verified v0.4.48'
+            git push origin HEAD:main
+          fi
+
+      - name: Deploy permanent QR page
+        shell: bash
+        env:
+          GH_TOKEN: \${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run deploy-site.yml -R "$GITHUB_REPOSITORY" --ref main
