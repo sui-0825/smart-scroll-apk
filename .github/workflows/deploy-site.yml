@@ -78,7 +78,7 @@ jobs:
           assert not release['draft'], 'release not published'
           name=pathlib.Path('/tmp/smartscroll-asset.txt').read_text()
           matching=[a for a in release['assets'] if a['name']==name and a['state']=='uploaded']
-          assert len(matching)==1 and matching[0]['size']>100000 and matching[0]['size']<50000000, 'missing or invalid APK'
+          assert len(matching)==1 and matching[0]['size']>100000 and matching[0]['size']<100000000, 'missing or invalid APK'
           digest=matching[0].get('digest','')
           assert digest.startswith('sha256:') and len(digest)==71, 'missing SHA-256 hash'
           pathlib.Path('/tmp/smartscroll-hash.txt').write_text(digest[7:])
