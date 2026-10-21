@@ -5,90 +5,109 @@ on:
     paths:
       - '.github/workflows/publish-v0446.yml'
   workflow_dispatch:
-  release:
-    types: [published]
 
 permissions:
   contents: write
   actions: write
 
 jobs:
-  prepare-draft:
-    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+  publish-verified-apk:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - name: Create a draft release for the verified APK
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Checkout verified compressed release parts
+        uses: actions/checkout@v4
+
+      - name: Restore and verify the original signed APK
         shell: bash
         run: |
           set -euo pipefail
-          if gh release view v0.4.46 -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "v0.4.46 already exists. Do not replace an existing release."
-          else
-            gh release create v0.4.46 -R "$GITHUB_REPOSITORY" \
-              --target main --title 'Smart Scroll v0.4.46' \
-              --notes 'アイボリー×シャンパンゴールドの小型操作パネルに、開始・一時停止・再開と小さな完全停止ボタンを追加。既存のバー監視・豆判定・AIスキップは維持。まず1台でお試しください。' \
-              --prerelease --draft
+          python3 - <<'PY'
+          from pathlib import Path
+          from hashlib import sha256
+          import zlib
+          directory=Path('dist/release-parts/v0.4.46')
+          files=sorted(directory.glob('chunk[0-9][0-9][0-9].part'))
+          assert [p.name for p in files] == [f'chunk{i:03d}.part' for i in range(22)], 'Release part sequence incomplete'
+          compressed=b''.join(p.read_bytes() for p in files)
+          assert len(compressed)==22659038, 'Compressed payload size mismatch'
+          apk=zlib.decompress(compressed)
+          assert len(apk)==53152717, 'Signed APK length mismatch'
+          expected='9dd9238848a3f6e855a8885fa02bf4fcb80821891ea6442887fe4fd1fb9687e8'
+          assert sha256(apk).hexdigest()==expected, 'Signed APK SHA-256 mismatch'
+          Path('SmartScroll-v0.4.46.apk').write_bytes(apk)
+          print('Verified exact v0.4.46 signed APK:', expected)
+          PY
+
+      - name: Upload exact signed APK to the existing draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! gh release view v0.4.46 -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create v0.4.46 -R "$GITHUB_REPOSITORY" --target main \
+              --title 'Smart Scroll v0.4.46' --prerelease --draft \
+              --notes 'アイボリー×シャンパンゴールドの小型操作パネル、開始・一時停止・再開、小さな完全停止ボタン。まず1台でお試しください。'
+          fi
+          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/v0.4.46" > "$RUNNER_TEMP/release-before.json"
+          python3 - <<'PY'
+          import json,os
+          j=json.load(open(os.environ['RUNNER_TEMP']+'/release-before.json'))
+          expected='sha256:9dd9238848a3f6e855a8885fa02bf4fcb80821891ea6442887fe4fd1fb9687e8'
+          matches=[a for a in j['assets'] if a['name']=='SmartScroll-v0.4.46.apk']
+          assert all(a.get('digest')==expected and a.get('size')==53152717 for a in matches), 'Unexpected existing APK, refusing overwrite'
+          PY
+          if ! gh release view v0.4.46 -R "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' | grep -qx 'SmartScroll-v0.4.46.apk'; then
+            gh release upload v0.4.46 SmartScroll-v0.4.46.apk -R "$GITHUB_REPOSITORY"
           fi
 
-  publish-to-qr:
-    if: ${{ github.event_name == 'release' && github.event.release.tag_name == 'v0.4.46' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout public QR site
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          persist-credentials: true
-      - name: Verify exact signed APK before exposing it through the QR
+      - name: Verify uploaded asset, then publish the release
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        shell: bash
         run: |
           set -euo pipefail
-          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/v0.4.46" > "$RUNNER_TEMP/release.json"
+          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/v0.4.46" > "$RUNNER_TEMP/release-after.json"
           python3 - <<'PY'
-          import json, pathlib, os
-          j=json.loads(pathlib.Path(os.environ['RUNNER_TEMP'],'release.json').read_text())
-          assert not j['draft'], 'Release has not been published'
-          assert j['tag_name']=='v0.4.46', 'Unexpected release tag'
-          assets=[a for a in j['assets'] if a['name']=='SmartScroll-v0.4.46.apk' and a['state']=='uploaded']
-          assert len(assets)==1, 'Expected one uploaded APK'
-          a=assets[0]
-          assert a['size']==53152717, 'APK size mismatch'
-          assert a.get('digest')=='sha256:9dd9238848a3f6e855a8885fa02bf4fcb80821891ea6442887fe4fd1fb9687e8', 'Wrong signed APK'
-          print('Verified APK asset and release metadata')
+          import json,os
+          j=json.load(open(os.environ['RUNNER_TEMP']+'/release-after.json'))
+          matches=[a for a in j['assets'] if a['name']=='SmartScroll-v0.4.46.apk' and a['state']=='uploaded']
+          assert len(matches)==1, 'Exactly one uploaded APK required'
+          assert matches[0]['size']==53152717, 'Asset size mismatch'
+          assert matches[0].get('digest')=='sha256:9dd9238848a3f6e855a8885fa02bf4fcb80821891ea6442887fe4fd1fb9687e8', 'Asset digest mismatch'
           PY
           gh release download v0.4.46 -R "$GITHUB_REPOSITORY" \
-            --pattern SmartScroll-v0.4.46.apk --dir "$RUNNER_TEMP" --clobber
-          printf '%s  %s\n' \
-            '9dd9238848a3f6e855a8885fa02bf4fcb80821891ea6442887fe4fd1fb9687e8' \
+            --pattern 'SmartScroll-v0.4.46.apk' --dir "$RUNNER_TEMP" --clobber
+          printf '%s  %s\n' '9dd9238848a3f6e855a8885fa02bf4fcb80821891ea6442887fe4fd1fb9687e8' \
             "$RUNNER_TEMP/SmartScroll-v0.4.46.apk" | sha256sum --check -
-      - name: Update the same permanent QR download page
+          gh release edit v0.4.46 -R "$GITHUB_REPOSITORY" --draft=false --prerelease
+
+      - name: Switch the permanent QR page only after successful verification
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import json, pathlib
-          obj={
+          from pathlib import Path
+          import json
+          o={
             'schema':1,
             'versionCode':71,
             'versionName':'0.4.46',
             'apkUrl':'https://github.com/sui-0825/smart-scroll-apk/releases/download/v0.4.46/SmartScroll-v0.4.46.apk',
-            'notes':'v0.4.46：小さい操作パネルをアイボリーとシャンパンゴールドに変更し、完全停止ボタンを追加。まず1台でお試しください。'
+            'notes':'v0.4.46：アイボリーとシャンパンゴールドの小型操作パネルと完全停止ボタン。まず1台で動作確認してください。'
           }
-          p=pathlib.Path('latest.json')
-          p.write_text(json.dumps(obj,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          Path('latest.json').write_text(json.dumps(o, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
           PY
           if ! git diff --quiet -- latest.json; then
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
             git add latest.json
-            git commit -m 'Point permanent Smart Scroll QR to verified v0.4.46'
+            git commit -m 'Switch permanent QR to verified Smart Scroll v0.4.46'
             git push origin HEAD:main
           fi
-      - name: Redeploy the permanent QR site with the new signed APK
+
+      - name: Deploy permanent QR page with the new APK
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
