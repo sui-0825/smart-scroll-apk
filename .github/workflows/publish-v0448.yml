@@ -59,7 +59,7 @@ jobs:
       - name: Create draft and upload exact verified v0.4.48 APK
         shell: bash
         env:
-          GH_TOKEN: \${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           if ! gh release view v0.4.48 -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
@@ -88,7 +88,7 @@ jobs:
       - name: Verify uploaded APK and publish release
         shell: bash
         env:
-          GH_TOKEN: \${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" > "$RUNNER_TEMP/v0448-after.json"
@@ -134,7 +134,7 @@ jobs:
       - name: Deploy permanent QR page
         shell: bash
         env:
-          GH_TOKEN: \${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           gh workflow run deploy-site.yml -R "$GITHUB_REPOSITORY" --ref main
