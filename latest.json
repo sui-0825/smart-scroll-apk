@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "versionCode": 71,
-  "versionName": "0.4.46",
-  "apkUrl": "https://github.com/sui-0825/smart-scroll-apk/releases/download/v0.4.46/SmartScroll-v0.4.46.apk",
-  "notes": "v0.4.46：アイボリーとシャンパンゴールドの小型操作パネルと完全停止ボタン。まず1台で動作確認してください。"
+  "versionCode": 73,
+  "versionName": "0.4.48",
+  "apkUrl": "https://github.com/sui-0825/smart-scroll-apk/releases/download/v0.4.48/SmartScroll-v0.4.48.apk",
+  "notes": "v0.4.48：デザインと設定画面を調整した更新版。最初は1台で確認してください。"
 }
