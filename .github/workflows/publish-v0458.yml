@@ -1,0 +1,63 @@
+name: Publish Smart Scroll v0.4.58 test APK (direct Android download)
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-v0458.yml'
+      - 'dist/release-parts/v0.4.58/patch-v0458.zst'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish-v0458:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout verified v0.4.58 patch
+        uses: actions/checkout@v4
+
+      - name: Download known public v0.4.52 and verify delta
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s  %s\n' 'ea18cd1adf7b2ea242f6cdb22751cdbb4dbc6aa2712b99104845bccf191bf944' 'dist/release-parts/v0.4.58/patch-v0458.zst' | sha256sum --check -
+          gh release download v0.4.52 -R "$GITHUB_REPOSITORY" --pattern 'SmartScroll-v0.4.52.apk' --dir . --clobber
+          printf '%s  %s\n' 'a8810bbdead7bb2fdd8793a956b0d7841f897500c4c2aa99a1ec3c0a3ae2d873' 'SmartScroll-v0.4.52.apk' | sha256sum --check -
+
+      - name: Recover exact tested signed v0.4.58 APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v zstd >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y zstd
+          fi
+          zstd --patch-from=SmartScroll-v0.4.52.apk -d dist/release-parts/v0.4.58/patch-v0458.zst -o SmartScroll-v0.4.58.apk
+          test "$(stat -c%s SmartScroll-v0.4.58.apk)" -eq 53201873
+          printf '%s  %s\n' '8cde31507692d63b84e134ee6a92afdc3367dc4d8cbe8a8fc2ea304318937656' 'SmartScroll-v0.4.58.apk' | sha256sum --check -
+
+      - name: Publish independent test release (do not change common QR)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! gh release view v0.4.58 -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create v0.4.58 SmartScroll-v0.4.58.apk -R "$GITHUB_REPOSITORY"               --target main --prerelease --title 'Smart Scroll v0.4.58 テスト版'               --notes '長尺の超低速再生バー判定とスクロール詳細表示を改善。設定時間・バーなし5秒・広告・プロモーション・AI生成の処理は変更していません。まず1台のみ上書きして検証してください。共通QRとlatest.jsonは変更していません。'
+          else
+            gh release upload v0.4.58 SmartScroll-v0.4.58.apk -R "$GITHUB_REPOSITORY" --clobber
+          fi
+
+      - name: Verify publicly downloadable APK bytes
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/verify-v0458"
+          gh release download v0.4.58 -R "$GITHUB_REPOSITORY"             --pattern 'SmartScroll-v0.4.58.apk' --dir "$RUNNER_TEMP/verify-v0458" --clobber
+          printf '%s  %s\n' '8cde31507692d63b84e134ee6a92afdc3367dc4d8cbe8a8fc2ea304318937656'             "$RUNNER_TEMP/verify-v0458/SmartScroll-v0.4.58.apk" | sha256sum --check -
