@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "versionCode": 73,
-  "versionName": "0.4.48",
-  "apkUrl": "https://github.com/sui-0825/smart-scroll-apk/releases/download/v0.4.48/SmartScroll-v0.4.48.apk",
-  "notes": "v0.4.48：デザインと設定画面を調整した更新版。最初は1台で確認してください。"
+  "versionCode": 83,
+  "versionName": "0.4.58",
+  "apkUrl": "https://github.com/sui-0825/smart-scroll-apk/releases/download/v0.4.58/SmartScroll-v0.4.58.apk",
+  "notes": "v0.4.58：長尺動画の低速再生バー判定とスクロール詳細表示を改善。まず1台で上書き更新して動作確認してください。"
 }
