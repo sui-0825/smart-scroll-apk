@@ -1,0 +1,68 @@
+name: Publish Smart Scroll v0.4.58 ZIP for file storage
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/publish-v0458-zip.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  zip-for-storage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Verify exact publicly released signed APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release download v0.4.58 -R "$GITHUB_REPOSITORY" \
+            --pattern "SmartScroll-v0.4.58.apk" --dir . --clobber
+          test "$(stat -c%s SmartScroll-v0.4.58.apk)" -eq 53201873
+          printf '%s  %s\n' \
+            '8cde31507692d63b84e134ee6a92afdc3367dc4d8cbe8a8fc2ea304318937656' \
+            'SmartScroll-v0.4.58.apk' | sha256sum --check -
+
+      - name: Make ZIP that Android can save without opening the installer
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib, zipfile
+          apk=Path("SmartScroll-v0.4.58.apk")
+          bundle=Path("SmartScroll-v0.4.58-FILE-SAVE.zip")
+          with zipfile.ZipFile(bundle, "w", compression=zipfile.ZIP_STORED, allowZip64=True) as z:
+              z.write(apk, arcname=apk.name)
+          with zipfile.ZipFile(bundle) as z:
+              assert z.namelist() == [apk.name]
+              assert z.testzip() is None
+              assert hashlib.sha256(z.read(apk.name)).hexdigest() == \
+                '8cde31507692d63b84e134ee6a92afdc3367dc4d8cbe8a8fc2ea304318937656'
+          print("Verified ZIP containing the exact v0.4.58 signed APK:", bundle.stat().st_size)
+          PY
+
+      - name: Upload ZIP to public v0.4.58 release without changing common QR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release upload v0.4.58 SmartScroll-v0.4.58-FILE-SAVE.zip \
+            -R "$GITHUB_REPOSITORY" --clobber
+          mkdir -p public-check
+          gh release download v0.4.58 -R "$GITHUB_REPOSITORY" \
+            --pattern 'SmartScroll-v0.4.58-FILE-SAVE.zip' --dir public-check --clobber
+          python3 - <<'PY'
+          import zipfile,hashlib
+          zip_path='public-check/SmartScroll-v0.4.58-FILE-SAVE.zip'
+          with zipfile.ZipFile(zip_path) as z:
+              assert z.testzip() is None
+              assert z.namelist()==['SmartScroll-v0.4.58.apk']
+              assert hashlib.sha256(z.read('SmartScroll-v0.4.58.apk')).hexdigest()== \
+                '8cde31507692d63b84e134ee6a92afdc3367dc4d8cbe8a8fc2ea304318937656'
+          print("Public file-storage ZIP redownload verified")
+          PY
