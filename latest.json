@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "versionCode": 83,
-  "versionName": "0.4.58",
-  "apkUrl": "https://github.com/sui-0825/smart-scroll-apk/releases/download/v0.4.58/SmartScroll-v0.4.58.apk",
-  "notes": "v0.4.58：長尺動画の低速再生バー判定とスクロール詳細表示を改善。まず1台で上書き更新して動作確認してください。"
+  "versionCode": 84,
+  "versionName": "0.4.59",
+  "apkUrl": "https://github.com/sui-0825/smart-scroll-apk/releases/download/v0.4.59/SmartScroll-v0.4.59.apk",
+  "notes": "v0.4.59 βテスト版：予期しない停止の通知、画面確認の途切れや監視遅延の診断を追加。実機での長時間検証前のため、まず1台で上書き更新して確認してください。問題があればv0.4.58に戻せます。"
 }
