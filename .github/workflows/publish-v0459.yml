@@ -1,0 +1,74 @@
+name: Publish verified Smart Scroll v0.4.59 beta APK
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/publish-v0459.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct exact signed APK and verify cryptographic hashes
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist/v0459
+          shopt -s nullglob
+          parts=(dist/release-parts/v0.4.59/patch-b64/part-*.txt)
+          test "${#parts[@]}" -eq 20
+          cat "${parts[@]}" | base64 --decode > dist/v0459/patch.zst
+          echo "7072e7c9125a52945955aabdb63593363af2636fc6af10137f1477a1e8b8c1ae  dist/v0459/patch.zst" | sha256sum -c -
+          gh release download v0.4.58 -R "$GITHUB_REPOSITORY" \
+            -p SmartScroll-v0.4.58.apk --dir dist/v0459 --clobber
+          echo "8cde31507692d63b84e134ee6a92afdc3367dc4d8cbe8a8fc2ea304318937656  dist/v0459/SmartScroll-v0.4.58.apk" | sha256sum -c -
+          command -v zstd || (sudo apt-get update -qq && sudo apt-get install -y zstd)
+          zstd -d --patch-from=dist/v0459/SmartScroll-v0.4.58.apk \
+            dist/v0459/patch.zst -o dist/v0459/SmartScroll-v0.4.59.apk
+          test "$(stat -c%s dist/v0459/SmartScroll-v0.4.59.apk)" -eq 53201873
+          echo "3c63e2cd479072ec96a567cffd7148638aa69faa4f22d4adc0a89fa6428128cf  dist/v0459/SmartScroll-v0.4.59.apk" | sha256sum -c -
+      - name: Verify package version and release signing continuity
+        shell: bash
+        run: |
+          set -euo pipefail
+          AAPT="$(find "$ANDROID_HOME/build-tools" -mindepth 2 -maxdepth 2 -type f -name aapt | sort -V | tail -n 1)"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -mindepth 2 -maxdepth 2 -type f -name apksigner | sort -V | tail -n 1)"
+          test -x "$AAPT" && test -x "$APKSIGNER"
+          APK=dist/v0459/SmartScroll-v0.4.59.apk
+          BASE=dist/v0459/SmartScroll-v0.4.58.apk
+          INFO="$("$AAPT" dump badging "$APK" | grep '^package: ')"
+          echo "$INFO"
+          [[ "$INFO" == *"name='com.smartscroll.app'"* ]]
+          [[ "$INFO" == *"versionCode='84'"* ]]
+          [[ "$INFO" == *"versionName='0.4.59'"* ]]
+          "$APKSIGNER" verify --verbose "$APK"
+          BASE_CERT="$("$APKSIGNER" verify --print-certs "$BASE" | grep 'Signer #1 certificate SHA-256 digest:' | head -n 1)"
+          BETA_CERT="$("$APKSIGNER" verify --print-certs "$APK" | grep 'Signer #1 certificate SHA-256 digest:' | head -n 1)"
+          test -n "$BASE_CERT" && test "$BASE_CERT" = "$BETA_CERT"
+          echo 'Same release signing certificate confirmed.'
+      - name: Publish prerelease without changing common QR yet
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG=v0.4.59
+          if ! gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" dist/v0459/SmartScroll-v0.4.59.apk \
+              -R "$GITHUB_REPOSITORY" --target main --prerelease \
+              --title 'Smart Scroll v0.4.59 β テスト版' \
+              --notes '予期しない停止通知・10分の視覚確認不確実性・監視遅延記録のβテスト版。実機検証前のためまず1台から確認してください。v0.4.58への戻し先は保存しています。'
+          fi
+          mkdir -p dist/v0459/recheck
+          gh release download "$TAG" -R "$GITHUB_REPOSITORY" \
+            -p SmartScroll-v0.4.59.apk --dir dist/v0459/recheck --clobber
+          echo "3c63e2cd479072ec96a567cffd7148638aa69faa4f22d4adc0a89fa6428128cf  dist/v0459/recheck/SmartScroll-v0.4.59.apk" | sha256sum -c -
+          echo 'Verified public beta APK is ready.'
