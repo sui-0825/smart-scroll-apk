@@ -50,8 +50,12 @@ jobs:
           [[ "$INFO" == *"versionCode='84'"* ]]
           [[ "$INFO" == *"versionName='0.4.59'"* ]]
           "$APKSIGNER" verify --verbose "$APK"
-          BASE_CERT="$("$APKSIGNER" verify --print-certs "$BASE" | grep 'Signer #1 certificate SHA-256 digest:' | head -n 1)"
-          BETA_CERT="$("$APKSIGNER" verify --print-certs "$APK" | grep 'Signer #1 certificate SHA-256 digest:' | head -n 1)"
+          echo 'Original v0.4.58 signature details:'
+          "$APKSIGNER" verify --print-certs "$BASE"
+          echo 'New v0.4.59 signature details:'
+          "$APKSIGNER" verify --print-certs "$APK"
+          BASE_CERT="$("$APKSIGNER" verify --print-certs "$BASE" | grep -i 'certificate SHA-256 digest:' | head -n 1)"
+          BETA_CERT="$("$APKSIGNER" verify --print-certs "$APK" | grep -i 'certificate SHA-256 digest:' | head -n 1)"
           test -n "$BASE_CERT" && test "$BASE_CERT" = "$BETA_CERT"
           echo 'Same release signing certificate confirmed.'
       - name: Publish prerelease without changing common QR yet
