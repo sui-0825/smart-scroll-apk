@@ -31,7 +31,7 @@
   <div class="pill" id="version">最新版を確認中</div>
   <p class="status" id="status" role="status" aria-live="polite">最新のインストールファイルを探しています…</p>
   <a class="download" id="download" hidden href="#">⬇ 最新版APKをダウンロード</a>
-  <p class="note">Androidのダウンロード確認やインストールの許可画面が表示される場合があります。<br>ダウンロードは上のボタンを押すと始まります。ボタンを押しても保存が進まない場合は下のリリース一覧からAPKを選んでください。</p>
+  <p class="note">AndroidではQRを開くとダウンロード先へ自動で進みます。始まらない場合は上のボタンを押してください。<br>AndroidやGoogle Play プロテクトによる安全確認は省略されません。ダウンロード完了後にAPKを開いてください。</p>
   <p class="small"><a href="https://github.com/sui-0825/smart-scroll-apk/releases">手動でリリース一覧を開く</a></p>
 </main>
 <script>
@@ -51,10 +51,35 @@
     }
     version.textContent = "最新版 Ver." + data.versionName;
     link.href = data.apkUrl;
+    link.textContent = "⬇ APKをダウンロード";
     link.hidden = false;
-    status.textContent = "最新版が見つかりました。下のボタンを押してAPKをダウンロードしてください。";
-    // Only navigate after a user tap: browser download handling can hang on automatic redirects.
-  } catch (error) {
+
+    // Android: one QR scan can open the verified release download directly.
+    // Keep the visible, ordinary link as a fallback for browsers that block
+    // downloads started by page navigation. Do not click the link twice.
+    if (/Android/i.test(navigator.userAgent)) {
+      status.textContent = "最新版のダウンロード先を開いています。始まらなければ下のボタンを押してください。";
+      let shouldOpen = true;
+      try {
+        const last = JSON.parse(sessionStorage.getItem("smartscroll-download-opened") || "null");
+        if (last && last.code === data.versionCode &&
+            Date.now() - last.at < 120000) shouldOpen = false;
+        if (shouldOpen) sessionStorage.setItem("smartscroll-download-opened",
+          JSON.stringify({ code: data.versionCode, at: Date.now() }));
+      } catch (_) {
+        // Privacy-restricted browsers may block session storage; link still works.
+      }
+      if (shouldOpen) {
+        window.setTimeout(() => {
+          if (document.visibilityState !== "hidden") window.location.assign(data.apkUrl);
+        }, 300);
+      } else {
+        status.textContent = "先ほどダウンロード先を開きました。始まらなかった場合は下のボタンを押してください。";
+      }
+    } else {
+      status.textContent = "下のボタンから最新版APKをダウンロードしてください。";
+    }
+  } catch (_) {
     version.textContent = "配布情報を確認できません";
     status.textContent = "少し待ってから読み直すか、リリース一覧からダウンロードしてください。";
   }
