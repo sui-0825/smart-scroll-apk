@@ -71,7 +71,7 @@
       }
       if (shouldOpen) {
         window.setTimeout(() => {
-          if (document.visibilityState !== "hidden") window.location.assign(data.apkUrl);
+          if (document.visibilityState !== "hidden") window.location.assign(link.href);
         }, 300);
       } else {
         status.textContent = "先ほどダウンロード先を開きました。始まらなかった場合は下のボタンを押してください。";
