@@ -108,6 +108,30 @@ jobs:
           sudo apt-get install -y fonts-noto-cjk
           python3 -m pip install --disable-pip-version-check pillow 'qrcode[pil]'
           python3 build_qr_poster.py
+          # Additional, separate test-only QR image: never replace the shared QR.
+          python3 - <<'PY'
+          from pathlib import Path
+          import qrcode
+          target = ("https://github.com/sui-0825/smart-scroll-apk/releases/download/"
+                    "consent-screen-test-v0.4.59-20261031/SmartScroll-consent-screen-test.apk")
+          image = qrcode.make(target).convert("RGB")
+          image.save("site/SmartScroll-consent-test-QR.png")
+          page = """<!doctype html>
+          <html lang="ja"><head><meta charset="utf-8">
+          <meta name="viewport" content="width=device-width,initial-scale=1">
+          <title>Smart Scroll 同意画面テスト専用QR</title>
+          <style>body{font-family:system-ui,sans-serif;max-width:480px;margin:auto;
+          padding:18px;text-align:center;background:#faf8f4;color:#1c3351}
+          img{width:100%;max-width:380px;background:white;border-radius:12px}
+          a{display:block;margin:15px;padding:14px;background:#193b76;color:white;
+          border-radius:12px;text-decoration:none;font-weight:bold}</style></head><body>
+          <h1>Smart Scroll</h1><p>同意画面テスト版・1台用</p>
+          <img alt="同意画面テスト版QR" src="./SmartScroll-consent-test-QR.png">
+          <a href="./SmartScroll-consent-test-QR.png" download="SmartScroll-consent-test-QR.png">QR画像を保存する</a>
+          <p>このリンクは通常の固定QRとは別です。一般配布・一括更新は行いません。</p>
+          </body></html>"""
+          Path("site/consent-test-qr.html").write_text(page, encoding="utf-8")
+          PY
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
