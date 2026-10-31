@@ -138,6 +138,16 @@ jobs:
           v2_page = page.replace("同意画面テスト版・1台用", "ML Kit説明追加版・テスト端末1台用")
           v2_page = v2_page.replace("SmartScroll-consent-test-QR.png", "SmartScroll-mlkit-v2-test-QR.png")
           Path("site/mlkit-v2-test-qr.html").write_text(v2_page, encoding="utf-8")
+          # Separate screenshot-safety test QR, preserving all previous routes.
+          guard_target = ("https://github.com/sui-0825/smart-scroll-apk/releases/download/"
+                          "capture-guard-test-v0.4.59-20261031/SmartScroll-capture-guard-test.apk")
+          qrcode.make(guard_target).convert("RGB").save("site/SmartScroll-capture-guard-test-QR.png")
+          guard_page = page.replace("同意画面テスト版・1台用", "画面切り替え安全対策版・テスト端末1台用")
+          guard_page = guard_page.replace("SmartScroll-consent-test-QR.png", "SmartScroll-capture-guard-test-QR.png")
+          guard_page = guard_page.replace(
+              "一般配布・一括更新は行いません。",
+              "一般配布・一括更新は行いません。Play プロテクトの警告が出た場合は、無理にインストールしないでください。")
+          Path("site/capture-guard-test-qr.html").write_text(guard_page, encoding="utf-8")
           PY
 
       - name: Configure GitHub Pages
