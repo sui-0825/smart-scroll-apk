@@ -131,6 +131,13 @@ jobs:
           <p>このリンクは通常の固定QRとは別です。一般配布・一括更新は行いません。</p>
           </body></html>"""
           Path("site/consent-test-qr.html").write_text(page, encoding="utf-8")
+          # New standalone test QR; leave both the existing test and main QR untouched.
+          v2_target = ("https://github.com/sui-0825/smart-scroll-apk/releases/download/"
+                       "mlkit-disclosure-v2-test-v0.4.59-20261031/SmartScroll-mlkit-disclosure-v2-test.apk")
+          qrcode.make(v2_target).convert("RGB").save("site/SmartScroll-mlkit-v2-test-QR.png")
+          v2_page = page.replace("同意画面テスト版・1台用", "ML Kit説明追加版・テスト端末1台用")
+          v2_page = v2_page.replace("SmartScroll-consent-test-QR.png", "SmartScroll-mlkit-v2-test-QR.png")
+          Path("site/mlkit-v2-test-qr.html").write_text(v2_page, encoding="utf-8")
           PY
 
       - name: Configure GitHub Pages
