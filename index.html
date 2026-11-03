@@ -21,6 +21,11 @@
     a.download[hidden] { display: none; }
     p.note { color: #475569; font-size: 13px; line-height: 1.7; }
     .small { color: #5a6580; font-size: 12px; margin-top: 14px; }
+    .next { background: #fff8e9; border: 1px solid #e4cf9e; border-radius: 14px;
+      padding: 14px 12px; text-align: left; line-height: 1.65; margin-top: 18px; }
+    .next strong { display: block; color: #193b76; font-size: 15px; margin-bottom: 6px; }
+    .next p { margin: 5px 0 0; font-size: 13px; }
+    .next .fallback { color: #475569; font-size: 12px; margin-top: 8px; }
   </style>
 </head>
 <body>
@@ -31,7 +36,13 @@
   <div class="pill" id="version">最新版を確認中</div>
   <p class="status" id="status" role="status" aria-live="polite">最新のインストールファイルを探しています…</p>
   <a class="download" id="download" hidden href="#">⬇ 最新版APKをダウンロード</a>
-  <p class="note">AndroidではQRを開くとダウンロード先へ自動で進みます。始まらない場合は上のボタンを押してください。<br>AndroidやGoogle Play プロテクトによる安全確認は省略されません。ダウンロード完了後にAPKを開いてください。</p>
+  <p class="note">AndroidではQRを開くとダウンロード先へ自動で進みます。始まらない場合は上のボタンを押してください。<br>AndroidやGoogle Play プロテクトの安全確認は省略されません。</p>
+  <section class="next" aria-label="ダウンロード後の開き方">
+    <strong>📱 ダウンロード後は「詳細」を押さずに進もう</strong>
+    <p>保存が完了したら、Chromeの「開く」が表示されればそこをタップ。表示されなければ、画面上部から通知欄を開いて<strong style="display:inline;font-size:inherit">「ダウンロード完了」</strong>の通知をタップしてね。</p>
+    <p class="fallback">通知が見つからないときだけ：Chromeの「︙」→「ダウンロード」→ SmartScroll.apk を選ぶ。</p>
+    <p class="fallback">端末によって表示が異なります。インストール許可や警告はAndroidの画面で必ず確認してください。</p>
+  </section>
   <p class="small"><a href="https://github.com/sui-0825/smart-scroll-apk/releases">手動でリリース一覧を開く</a></p>
 </main>
 <script>
