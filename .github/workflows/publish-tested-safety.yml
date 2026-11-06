@@ -1,0 +1,47 @@
+name: Publish tested Smart Scroll safety APK
+on:
+  push:
+    branches:
+      - feature/stage-v0459-safety-qr-20261107
+    paths:
+      - .github/workflows/publish-tested-safety.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BASE_ZIP_URL: 'https://sdmntprjapaneast.oaiusercontent.com/files/00000000-8ad0-8209-95e7-e04ee98128b5/raw?se=2026-11-06T22%3A52%3A36Z&sp=r&sv=2026-02-06&sr=b&scid=54f7f35a-4a70-5237-9d9c-5776e09afb61&skoid=bb372dd6-3b2a-4af2-b355-c26497ba23cd&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-11-06T18%3A18%3A38Z&ske=2026-11-07T18%3A18%3A38Z&sks=b&skv=2026-02-06&sig=/PUPd8RZYyYhQ9Y7%2BYgqN/jHSS2MsTTM9yBi%2BMCyv14%3D'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct verified tested APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p work
+          curl --fail --location --silent --show-error --retry 2 --connect-timeout 15 --max-time 120 "$BASE_ZIP_URL" -o work/base.zip
+          unzip -p work/base.zip SmartScroll-v0.4.59.apk > work/base.apk
+          echo 'c253b87f6ac075cd4d17d970218d14a3b0b164bab3ec5a161cb4860496afd2cf  work/base.apk' | sha256sum -c -
+          cat dist/safety-patch/part-*.txt | base64 -d > work/patch.zst
+          echo '8d352bae1ebe1a15380a2b5f0ca6f8825eb4f962be260926fef2bc3d917a6c6b  work/patch.zst' | sha256sum -c -
+          if ! command -v zstd >/dev/null; then sudo apt-get update -qq && sudo apt-get install -y zstd; fi
+          zstd -d --patch-from=work/base.apk work/patch.zst -o work/SmartScroll-v0.4.59-safety.apk
+          test "$(stat -c%s work/SmartScroll-v0.4.59-safety.apk)" -eq 53218257
+          echo 'a8bb73fb17869e578a59efc775585d2840d2077a8cb076aa1e12b53097ea0ebe  work/SmartScroll-v0.4.59-safety.apk' | sha256sum -c -
+      - name: Publish safety APK beside existing version
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release upload v0.4.59 work/SmartScroll-v0.4.59-safety.apk --repo "$GITHUB_REPOSITORY" --clobber
+          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/v0.4.59" > work/release.json
+          python3 - <<'PY'
+          import json
+          r=json.load(open('work/release.json'))
+          expected='sha256:a8bb73fb17869e578a59efc775585d2840d2077a8cb076aa1e12b53097ea0ebe'
+          a=[x for x in r['assets'] if x['name']=='SmartScroll-v0.4.59-safety.apk']
+          assert len(a)==1 and a[0]['size']==53218257 and a[0]['digest']==expected
+          print('Verified safety APK uploaded; existing release preserved.')
+          PY
