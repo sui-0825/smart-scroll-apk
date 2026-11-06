@@ -63,11 +63,11 @@ jobs:
           import json, re, pathlib
           data = json.loads(pathlib.Path('latest.json').read_text())
           v = data['versionName']
-          expected = f'https://github.com/sui-0825/smart-scroll-apk/releases/download/v{v}/SmartScroll-v{v}.apk'
+          expected = f'https://github.com/sui-0825/smart-scroll-apk/releases/download/v{v}/SmartScroll-v{v}-safety.apk'
           assert re.fullmatch(r'\d+\.\d+\.\d+', v), 'bad version'
           assert data['schema'] == 1 and data['versionCode'] > 0 and data['apkUrl'] == expected, 'manifest must point to approved release'
           pathlib.Path('/tmp/smartscroll-tag.txt').write_text('v' + v)
-          pathlib.Path('/tmp/smartscroll-asset.txt').write_text(f'SmartScroll-v{v}.apk')
+          pathlib.Path('/tmp/smartscroll-asset.txt').write_text(f'SmartScroll-v{v}-safety.apk')
           PY
           TAG="$(cat /tmp/smartscroll-tag.txt)"
           ASSET="$(cat /tmp/smartscroll-asset.txt)"
@@ -78,9 +78,9 @@ jobs:
           assert not release['draft'], 'release not published'
           name=pathlib.Path('/tmp/smartscroll-asset.txt').read_text()
           matching=[a for a in release['assets'] if a['name']==name and a['state']=='uploaded']
-          assert len(matching)==1 and matching[0]['size']>100000 and matching[0]['size']<100000000, 'missing or invalid APK'
+          assert len(matching)==1 and matching[0]['size']==53218257, 'missing or unexpected safety APK size'
           digest=matching[0].get('digest','')
-          assert digest.startswith('sha256:') and len(digest)==71, 'missing SHA-256 hash'
+          assert digest=='sha256:a8bb73fb17869e578a59efc775585d2840d2077a8cb076aa1e12b53097ea0ebe', 'safety APK SHA-256 mismatch'
           pathlib.Path('/tmp/smartscroll-hash.txt').write_text(digest[7:])
           PY
           gh release download "$TAG" -R "$GITHUB_REPOSITORY" --pattern "$ASSET" --dir "$RUNNER_TEMP" --clobber

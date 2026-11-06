@@ -2,6 +2,6 @@
   "schema": 1,
   "versionCode": 84,
   "versionName": "0.4.59",
-  "apkUrl": "https://github.com/sui-0825/smart-scroll-apk/releases/download/v0.4.59/SmartScroll-v0.4.59.apk",
-  "notes": "v0.4.59 βテスト版：予期しない停止の通知、画面確認の途切れや監視遅延の診断を追加。実機での長時間検証前のため、まず1台で上書き更新して確認してください。問題があればv0.4.58に戻せます。"
+  "apkUrl": "https://github.com/sui-0825/smart-scroll-apk/releases/download/v0.4.59/SmartScroll-v0.4.59-safety.apk",
+  "notes": "v0.4.59 安全対策版：権限説明・再生ボタン・バッテリー設定案内を改善。実機インストール確認済み。まず少数端末で検証し、Playプロテクトは有効のまま使用してください。"
 }
